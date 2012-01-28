@@ -939,6 +939,8 @@ LESS(1)                                                                LESS(1)
               acter in Unix to something other than ^U, that character is used
               instead of ^U.
 
+       ^G     Delete the entire command line and return to the main prompt.
+
 
 [1mKEY BINDINGS[0m
        You may define your own [4mless[24m commands by using the program [4mlesskey[24m  (1)
@@ -1578,4 +1580,4 @@ LESS(1)                                                                LESS(1)
 
 
 
-                           Version 441: 21 Jan 2011                    LESS(1)
+                           Version 442: 10 Mar 2011                    LESS(1)

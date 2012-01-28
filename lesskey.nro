@@ -1,4 +1,4 @@
-.TH LESSKEY 1 "Version 441: 21 Jan 2011"
+.TH LESSKEY 1 "Version 442: 10 Mar 2011"
 .SH NAME
 lesskey \- specify key bindings for less
 .SH SYNOPSIS
@@ -311,6 +311,7 @@ default line-editing keys used by less:
 	\eek		up
 	\eku		up
 	\eej		down
+	^G		abort
 .fi
 .sp
 

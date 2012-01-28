@@ -287,6 +287,7 @@ LESSKEY(1)                                                          LESSKEY(1)
             \ek       up
             \ku       up
             \ej       down
+            ^G        abort
 
 
 
@@ -353,4 +354,4 @@ LESSKEY(1)                                                          LESSKEY(1)
 
 
 
-                           Version 441: 21 Jan 2011                 LESSKEY(1)
+                           Version 442: 10 Mar 2011                 LESSKEY(1)
