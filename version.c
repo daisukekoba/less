@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2008  Mark Nudelman
+ * Copyright (C) 1984-2009  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -720,6 +720,9 @@ v426  10/27/08  Fix ignaw terminal handling (thanks to Per Hedeland);
 v427  3/16/09   A few Win32 fixes (thanks to Jason Hood).
 v428  3/30/09   Add "|-" syntax to LESSOPEN.
 v429  4/10/09   Fix search highlighting bug with underlined text.
+-----------------------------------------------------------------
+v430  4/22/09   Don't pass "-" to non-pipe LESSOPEN unless it starts with "-".
+v431  4/29/09   Fix highlight bug when match is at end of line.
 */
 
-char version[] = "429";
+char version[] = "431";

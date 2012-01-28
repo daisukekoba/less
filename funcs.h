@@ -193,6 +193,8 @@
 	public void opt_l ();
 	public void opt_j ();
 	public void calc_jump_sline ();
+	public void opt_shift ();
+	public void calc_shift_count ();
 	public void opt_k ();
 	public void opt_t ();
 	public void opt__T ();

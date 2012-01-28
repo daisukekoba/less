@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2008  Mark Nudelman
+ * Copyright (C) 1984-2009  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -932,7 +932,7 @@ adj_hilite(anchor, linepos, cvt_ops)
             /* Adjust highlight position. */
             hl_npos = npos;
         }
-        if (opos > hl_opos)
+        if (opos > hl_opos || line >= line_end)
         {
             /*
              * We've moved past the highlight position; store the
