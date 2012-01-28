@@ -13,7 +13,7 @@
 ======================================================================
 
 
-	Major changes between "less" versions 416 and 417
+	Major changes between "less" versions 416 and 418
 
 * Color escape sequences are now supported in WIN32 build.
 
