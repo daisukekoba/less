@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2005  Mark Nudelman
+ * Copyright (C) 1984-2007  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -8,6 +8,7 @@
  * contact the author, see the README file.
  */
 
+#define NEWBOT 1
 
 /*
  * Standard include file for "less".
@@ -147,6 +148,8 @@ void free();
 #else
 #define IS_DIGIT(c)	((c) >= '0' && (c) <= '9')
 #endif
+
+#define IS_CSI_START(c)	((c) == ESC || ((unsigned char)(c)) == CSI)
 
 #ifndef NULL
 #define	NULL	0
@@ -295,6 +298,10 @@ struct textlist
 
 #define	READ_INTR	(-2)
 
+/* A fraction is represented by an int n; the fraction is n/NUM_FRAC_DENOM */
+#define NUM_FRAC_DENOM			1000000
+#define NUM_LOG_FRAC_DENOM		6
+
 /* How quiet should we be? */
 #define	NOT_QUIET	0	/* Ring bell at eof and for errors */
 #define	LITTLE_QUIET	1	/* Ring bell only for errors */
@@ -419,6 +426,7 @@ struct textlist
 #endif /* IS_EBCDIC_HOST */
 
 #define	ESC		CONTROL('[')
+#define	CSI		((unsigned char)'\233')
 
 #if _OSK_MWC32
 #define	LSIGNAL(sig,func)	os9_signal(sig,func)
