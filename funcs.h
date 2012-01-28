@@ -83,6 +83,9 @@
 	public void ungetcc ();
 	public void ungetsc ();
 	public void commands ();
+	public int cvt_length ();
+	public int * cvt_alloc_chpos ();
+	public void cvt_text ();
 	public void init_cmds ();
 	public void add_fcmd_table ();
 	public void add_ecmd_table ();
@@ -235,6 +238,10 @@
 	public void error ();
 	public void ierror ();
 	public int query ();
+	public int compile_pattern ();
+	public void uncompile_pattern ();
+	public int is_null_pattern ();
+	public int match_pattern ();
 	public POSITION position ();
 	public void add_forw_pos ();
 	public void add_back_pos ();
@@ -250,6 +257,7 @@
 	public char * eq_message ();
 	public char * pr_string ();
 	public char * wait_message ();
+	public void init_search ();
 	public void repaint_hilite ();
 	public void clear_attn ();
 	public void undo_search ();
