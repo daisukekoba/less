@@ -35,7 +35,6 @@ static int overstrike;		/* Next char should overstrike previous char */
 static int last_overstrike = AT_NORMAL;
 static int is_null_line;	/* There is no current line */
 static int lmargin;		/* Left margin */
-static int line_matches;	/* Number of search matches in this line */
 static char pendc;
 static POSITION pendpos;
 static char *end_ansi_chars;
@@ -162,9 +161,6 @@ prewind()
 	lmargin = 0;
 	if (status_col)
 		lmargin += 1;
-#if HILITE_SEARCH
-	line_matches = 0;
-#endif
 }
 
 /*
@@ -592,7 +588,6 @@ store_char(ch, a, rep, pos)
 			if (a != AT_ANSI)
 				a |= AT_HILITE;
 		}
-		line_matches += matches;
 	}
 #endif
 
@@ -600,11 +595,12 @@ store_char(ch, a, rep, pos)
 	{
 		if (!is_ansi_end(ch) && !is_ansi_middle(ch)) {
 			/* Remove whole unrecognized sequence.  */
+			char *p = &linebuf[curr];
+			LWCHAR bch;
 			do {
-				if (curr == 0)
-					break;
-				--curr;
-			} while (!IS_CSI_START(linebuf[curr]));
+				bch = step_char(&p, -1, linebuf);
+			} while (p > linebuf && !IS_CSI_START(bch));
+			curr = p - linebuf;
 			return 0;
 		}
 		a = AT_ANSI;	/* Will force re-AT_'ing around it.  */
@@ -1068,14 +1064,17 @@ pdone(endline)
 	}
 	linebuf[curr] = '\0';
 	attr[curr] = AT_NORMAL;
+}
 
-#if HILITE_SEARCH
-	if (status_col && line_matches > 0)
-	{
-		linebuf[0] = '*';
-		attr[0] = AT_NORMAL|AT_HILITE;
-	}
-#endif
+/*
+ *
+ */
+	public void
+set_status_col(c)
+	char c;
+{
+	linebuf[0] = c;
+	attr[0] = AT_NORMAL|AT_HILITE;
 }
 
 /*
