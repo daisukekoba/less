@@ -71,6 +71,25 @@ static struct pattern_info search_info;
 static struct pattern_info filter_info;
 
 /*
+ * Are there any uppercase letters in this string?
+ */
+	static int
+is_ucase(str)
+	char *str;
+{
+	char *str_end = str + strlen(str);
+	LWCHAR ch;
+
+	while (str < str_end)
+	{
+		ch = step_char(&str, +1, str_end);
+		if (IS_UPPER(ch))
+			return (1);
+	}
+	return (0);
+}
+
+/*
  * Compile and save a search pattern.
  */
 	static int
@@ -93,6 +112,16 @@ set_pattern(info, pattern, search_type)
 		strcpy(info->text, pattern);
 	}
 	info->search_type = search_type;
+
+	/*
+	 * Ignore case if -I is set OR
+	 * -i is set AND the pattern is all lowercase.
+	 */
+	is_ucase_pattern = is_ucase(pattern);
+	if (is_ucase_pattern && caseless != OPT_ONPLUS)
+		is_caseless = 0;
+	else
+		is_caseless = caseless;
 	return 0;
 }
 
@@ -156,25 +185,6 @@ get_cvt_ops()
 }
 
 /*
- * Are there any uppercase letters in this string?
- */
-	static int
-is_ucase(str)
-	char *str;
-{
-	char *str_end = str + strlen(str);
-	LWCHAR ch;
-
-	while (str < str_end)
-	{
-		ch = step_char(&str, +1, str_end);
-		if (IS_UPPER(ch))
-			return (1);
-	}
-	return (0);
-}
-
-/*
  * Is there a previous (remembered) search pattern?
  */
 	static int
@@ -229,7 +239,7 @@ repaint_hilite(on)
 		goto_line(slinenum);
 		put_line();
 	}
-	lower_left(); // if !oldbot
+	lower_left();
 	hide_hilite = save_hide_hilite;
 }
 
@@ -789,7 +799,7 @@ search_range(pos, endpos, search_type, matches, maxlines, plinepos, pendpos)
 		if (prev_pattern(&search_info))
 		{
 			line_match = match_pattern(search_info.compiled, search_info.text,
-				cline, line_len, &sp, &ep, 0, search_type); //FIXME search_info.search_type
+				cline, line_len, &sp, &ep, 0, search_type);
 			if (line_match)
 			{
 				/*
@@ -852,12 +862,6 @@ hist_pattern(search_type)
 
 	if (set_pattern(&search_info, pattern, search_type) < 0)
 		return (0);
-
-	is_ucase_pattern = is_ucase(pattern);
-	if (is_ucase_pattern && caseless != OPT_ONPLUS)
-		is_caseless = 0;
-	else
-		is_caseless = caseless;
 
 #if HILITE_SEARCH
 	if (hilite_search == OPT_ONPLUS && !hide_hilite)
@@ -930,15 +934,6 @@ search(search_type, pattern, n)
 		 */
 		if (set_pattern(&search_info, pattern, search_type) < 0)
 			return (-1);
-		/*
-		 * Ignore case if -I is set OR
-		 * -i is set AND the pattern is all lowercase.
-		 */
-		is_ucase_pattern = is_ucase(pattern);
-		if (is_ucase_pattern && caseless != OPT_ONPLUS)
-			is_caseless = 0;
-		else
-			is_caseless = caseless;
 #if HILITE_SEARCH
 		if (hilite_search)
 		{

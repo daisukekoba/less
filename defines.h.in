@@ -219,6 +219,9 @@
 /* Define HAVE_FILENO if you have the fileno() macro. */
 #undef HAVE_FILENO
 
+/* Define HAVE_FLOAT if your compiler supports the "double" type. */
+#undef HAVE_FLOAT
+
 /* Define to 1 if you have the `fsync' function. */
 #undef HAVE_FSYNC
 

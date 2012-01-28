@@ -729,6 +729,12 @@ v433  6/28/09   Cleanup search code.
 v434  6/29/09   More cleanup.
 v435  7/04/09   Fix bugs with non-regex filtering.
 v436  7/05/09   Fix memory leak.
+-----------------------------------------------------------------
+v437  7/14/09   Fix bug in handling some long option names;
+                make percentage calculation more accurate.
+v438  12/29/10  Fix bugs with -i/-I and & filtering; 
+                exit with status 2 on ctrl-C with -K.
+
 */
 
-char version[] = "436";
+char version[] = "438";
