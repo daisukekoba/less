@@ -208,6 +208,7 @@ exec_mca()
 		break;
 #if HILITE_SEARCH
 	case A_FILTER:
+		search_type ^= SRCH_NO_MATCH;
 		set_filter_pattern(cbuf, search_type);
 		break;
 #endif
@@ -690,12 +691,11 @@ prompt()
 	clear_cmd();
 	forw_prompt = 0;
 	p = pr_string();
+	if (is_filtering())
+		putstr("& ");
 	if (p == NULL || *p == '\0')
-	{
-		if (is_filtering())
-			putchr('&');
 		putchr(':');
-	} else
+	else
 	{
 		at_enter(AT_STANDOUT);
 		putstr(p);
