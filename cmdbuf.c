@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2004  Mark Nudelman
+ * Copyright (C) 1984-2005  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -16,6 +16,10 @@
 
 #include "less.h"
 #include "cmd.h"
+#include "charset.h"
+#if HAVE_STAT
+#include <sys/stat.h>
+#endif
 
 extern int sc_width;
 extern int utf_mode;
@@ -137,15 +141,27 @@ clear_cmd()
 cmd_putstr(s)
 	char *s;
 {
+	LWCHAR prev_ch = 0;
+	LWCHAR ch;
 	char *endline = s + strlen(s);
 	while (*s != '\0')
 	{
 		char *ns = s;
-		(void) step_char(&ns, +1, endline);
+		ch = step_char(&ns, +1, endline);
 		while (s < ns)
 			putchr(*s++);
-		cmd_col++;
-		prompt_col++;
+		if (!utf_mode)
+		{
+			cmd_col++;
+			prompt_col++;
+		} else if (!is_composing_char(ch) &&
+		           !is_combining_char(prev_ch, ch))
+		{
+			int width = is_wide_char(ch) ? 2 : 1;
+			cmd_col += width;
+			prompt_col += width;
+		}
+		prev_ch = ch;
 	}
 }
 
@@ -168,72 +184,100 @@ len_cmdbuf()
 }
 
 /*
+ * Common part of cmd_step_right() and cmd_step_left().
+ */
+	static char *
+cmd_step_common(p, ch, len, pwidth, bswidth)
+	char *p;
+	LWCHAR ch;
+	int len;
+	int *pwidth;
+	int *bswidth;
+{
+	char *pr;
+
+	if (len == 1)
+	{
+		pr = prchar((int) ch);
+		if (pwidth != NULL || bswidth != NULL)
+		{
+			int len = strlen(pr);
+			if (pwidth != NULL)
+				*pwidth = len;
+			if (bswidth != NULL)
+				*bswidth = len;
+		}
+	} else
+	{
+		pr = prutfchar(ch);
+		if (pwidth != NULL || bswidth != NULL)
+		{
+			if (is_composing_char(ch))
+			{
+				if (pwidth != NULL)
+					*pwidth = 0;
+				if (bswidth != NULL)
+					*bswidth = 0;
+			} else if (is_ubin_char(ch))
+			{
+				int len = strlen(pr);
+				if (pwidth != NULL)
+					*pwidth = len;
+				if (bswidth != NULL)
+					*bswidth = len;
+			} else
+			{
+				LWCHAR prev_ch = step_char(&p, -1, cmdbuf);
+				if (is_combining_char(prev_ch, ch))
+				{
+					if (pwidth != NULL)
+						*pwidth = 0;
+					if (bswidth != NULL)
+						*bswidth = 0;
+				} else
+				{
+					if (pwidth != NULL)
+						*pwidth	= is_wide_char(ch)
+							?	2
+							:	1;
+					if (bswidth != NULL)
+						*bswidth = 1;
+				}
+			}
+		}
+	}
+
+	return (pr);
+}
+
+/*
  * Step a pointer one character right in the command buffer.
  */
 	static char *
-cmd_step_right(pp, pwidth)
+cmd_step_right(pp, pwidth, bswidth)
 	char **pp;
 	int *pwidth;
+	int *bswidth;
 {
-	char *p;
-	int len;
-	WCHAR ch;
+	char *p = *pp;
+	LWCHAR ch = step_char(pp, +1, p + strlen(p));
 
-	p = *pp;
-	ch = step_char(pp, +1, p + strlen(p));
-	len = *pp - p;
-	if (len == 1)
-	{
-		char *pr = prchar(*p);
-		if (pwidth != NULL)
-			*pwidth = strlen(pr);
-		return (pr);
-	} else
-	{
-		/* Assume all multibyte characters are printable. */
-		static char pbuf[MAX_UTF_CHAR_LEN+1];
-		strncpy(pbuf, p, len);
-		pbuf[len] = '\0';
-		if (pwidth != NULL)
-		{
-			/* {{ Should handle combining chars too? }} */
-			*pwidth = is_composing_char(ch) ? 0 : 1;
-		}
-		return (pbuf);
-	}
+	return cmd_step_common(p, ch, *pp - p, pwidth, bswidth);
 }
 
 /*
  * Step a pointer one character left in the command buffer.
  */
 	static char *
-cmd_step_left(pp, pwidth)
+cmd_step_left(pp, pwidth, bswidth)
 	char **pp;
 	int *pwidth;
+	int *bswidth;
 {
-	char *p;
-	int len;
-	WCHAR ch;
+	char *p = *pp;
+	LWCHAR ch = step_char(pp, -1, cmdbuf);
 
-	p = *pp;
-	ch = step_char(pp, -1, cmdbuf);
-	len = p - *pp;
-	if (len == 1)
-	{
-		char *pr = prchar(**pp);
-		*pwidth = strlen(pr);
-		return (pr);
-	} else
-	{
-		/* Assume all multibyte characters are printable. */
-		static char pbuf[MAX_UTF_CHAR_LEN+1];
-		strncpy(pbuf, *pp, len);
-		pbuf[len] = '\0';
-		if (pwidth != NULL)
-			/* {{ Should handle combining chars too? }} */
-			*pwidth = is_composing_char(ch) ? 0 : 1;
-		return (pbuf);
-	}
+	return cmd_step_common(*pp, ch, p - *pp, pwidth, bswidth);
 }
 
 /*
@@ -252,12 +296,22 @@ cmd_repaint(old_cp)
 	{
 		char *np = cp;
 		int width;
-		char *pr = cmd_step_right(&np, &width);
+		char *pr = cmd_step_right(&np, &width, NULL);
 		if (cmd_col + width >= sc_width)
 			break;
 		cp = np;
 		putstr(pr);
 		cmd_col += width;
+	}
+	while (*cp != '\0')
+	{
+		char *np = cp;
+		int width;
+		char *pr = cmd_step_right(&np, &width, NULL);
+		if (width > 0)
+			break;
+		cp = np;
+		putstr(pr);
 	}
 
 	/*
@@ -276,8 +330,12 @@ cmd_home()
 {
 	while (cmd_col > prompt_col)
 	{
-		putbs();
-		cmd_col--;
+		int width, bswidth;
+
+		cmd_step_left(&cp, &width, &bswidth);
+		while (bswidth-- > 0)
+			putbs();
+		cmd_col -= width;
 	}
 
 	cp = &cmdbuf[cmd_offset];
@@ -302,8 +360,17 @@ cmd_lshift()
 	while (cols < (sc_width - prompt_col) / 2 && *s != '\0')
 	{
 		int width;
-		cmd_step_right(&s, &width);
+		cmd_step_right(&s, &width, NULL);
 		cols += width;
+	}
+	while (*s != '\0')
+	{
+		int width;
+		char *ns = s;
+		cmd_step_right(&ns, &width, NULL);
+		if (width > 0)
+			break;
+		s = ns;
 	}
 
 	cmd_offset = s - cmdbuf;
@@ -332,7 +399,7 @@ cmd_rshift()
 	while (cols < (sc_width - prompt_col) / 2 && s > cmdbuf)
 	{
 		int width;
-		cmd_step_left(&s, &width);
+		cmd_step_left(&s, &width, NULL);
 		cols += width;
 	}
 
@@ -358,7 +425,7 @@ cmd_right()
 		return (CC_OK);
 	}
 	ncp = cp;
-	pr = cmd_step_right(&ncp, &width);
+	pr = cmd_step_right(&ncp, &width, NULL);
 	if (cmd_col + width >= sc_width)
 		cmd_lshift();
 	else if (cmd_col + width == sc_width - 1 && cp[1] != '\0')
@@ -366,6 +433,14 @@ cmd_right()
 	cp = ncp;
 	cmd_col += width;
 	putstr(pr);
+	while (*cp != '\0')
+	{
+		pr = cmd_step_right(&ncp, &width, NULL);
+		if (width > 0)
+			break;
+		putstr(pr);
+		cp = ncp;
+	}
 	return (CC_OK);
 }
 
@@ -376,7 +451,7 @@ cmd_right()
 cmd_left()
 {
 	char *ncp;
-	int width;
+	int width, bswidth;
 	
 	if (cp <= cmdbuf)
 	{
@@ -384,12 +459,17 @@ cmd_left()
 		return (CC_OK);
 	}
 	ncp = cp;
-	cmd_step_left(&ncp, &width);
+	while (ncp > cmdbuf)
+	{
+		cmd_step_left(&ncp, &width, &bswidth);
+		if (width > 0)
+			break;
+	}
 	if (cmd_col < prompt_col + width)
 		cmd_rshift();
 	cp = ncp;
 	cmd_col -= width;
-	while (width-- > 0)
+	while (bswidth-- > 0)
 		putbs();
 	return (CC_OK);
 }
@@ -584,6 +664,10 @@ set_mlist(mlist, cmdflags)
 {
 	curr_mlist = (struct mlist *) mlist;
 	curr_cmdflags = cmdflags;
+
+	/* Make sure the next up-arrow moves to the last string in the mlist. */
+	if (curr_mlist != NULL)
+		curr_mlist->curr_mp = curr_mlist;
 }
 
 #if CMD_HISTORY
@@ -642,17 +726,13 @@ cmd_addhist(mlist, cmd)
 	 */
 	if (strlen(cmd) == 0)
 		return;
+
 	/*
-	 * Don't save if a duplicate of a command which is already 
-	 * in the history.
-	 * But select the one already in the history to be current.
+	 * Save the command unless it's a duplicate of the
+	 * last command in the history.
 	 */
-	for (ml = mlist->next;  ml != mlist;  ml = ml->next)
-	{
-		if (strcmp(ml->string, cmd) == 0)
-			break;
-	}
-	if (ml == mlist)
+	ml = mlist->prev;
+	if (ml == mlist || strcmp(ml->string, cmd) != 0)
 	{
 		/*
 		 * Did not find command in history.
@@ -1117,19 +1197,45 @@ cmd_char(c)
 		len = 1;
 	} else
 	{
-		/*
-		 * If it's a multibyte char, just accumulate bytes until
-		 * we have the entire character.
-		 */
+		/* Perform strict validation in all possible cases.  */
 		if (cmd_mbc_buf_len == 0)
 		{
-			cmd_mbc_buf_len = utf_len(c);
-			cmd_mbc_buf_index = 0;
+		 retry:
+			cmd_mbc_buf_index = 1;
+			*cmd_mbc_buf = c;
+			if (IS_ASCII_OCTET(c))
+				cmd_mbc_buf_len = 1;
+			else if (IS_UTF8_LEAD(c))
+			{
+				cmd_mbc_buf_len = utf_len(c);
+				return (CC_OK);
+			} else
+			{
+				/* UTF8_INVALID or stray UTF8_TRAIL */
+				bell();
+				return (CC_ERROR);
+			}
+		} else if (IS_UTF8_TRAIL(c))
+		{
+			cmd_mbc_buf[cmd_mbc_buf_index++] = c;
+			if (cmd_mbc_buf_index < cmd_mbc_buf_len)
+				return (CC_OK);
+			if (!is_utf8_well_formed(cmd_mbc_buf))
+			{
+				/* complete, but not well formed (non-shortest form), sequence */
+				cmd_mbc_buf_len = 0;
+				bell();
+				return (CC_ERROR);
+			}
+		} else
+		{
+			/* Flush incomplete (truncated) sequence.  */
+			cmd_mbc_buf_len = 0;
+			bell();
+			/* Handle new char.  */
+			goto retry;
 		}
-		cmd_mbc_buf[cmd_mbc_buf_index++] = c;
-		if (cmd_mbc_buf_index < cmd_mbc_buf_len)
-			/* We don't have the entire char yet. */
-			return (CC_OK);
+
 		len = cmd_mbc_buf_len;
 		cmd_mbc_buf_len = 0;
 	}
@@ -1190,24 +1296,38 @@ get_cmdbuf()
 
 #if CMD_HISTORY
 /*
- *
+ * Get the name of the history file.
  */
 	static char *
 histfile_name()
 {
 	char *home;
 	char *name;
+	int len;
 	
+	/* See if filename is explicitly specified by $LESSHISTFILE. */
 	name = lgetenv("LESSHISTFILE");
 	if (name != NULL && *name != '\0')
 	{
 		if (strcmp(name, "-") == 0)
-			return NULL;
+			/* $LESSHISTFILE == "-" means don't use a history file. */
+			return (NULL);
 		return (save(name));
 	}
+
+	/* Otherwise, file is in $HOME. */
 	home = lgetenv("HOME");
-	name = (char *) ecalloc(strlen(home) + strlen(LESSHISTFILE) + 2, sizeof(char));
-	sprintf(name, "%s/%s", home, LESSHISTFILE);
+	if (home == NULL || *home == '\0')
+	{
+#if OS2
+		home = lgetenv("INIT");
+		if (home == NULL || *home == '\0')
+#endif
+			return (NULL);
+	}
+	len = strlen(home) + strlen(LESSHISTFILE) + 2;
+	name = (char *) ecalloc(len, sizeof(char));
+	SNPRINTF2(name, len, "%s/%s", home, LESSHISTFILE);
 	return (name);
 }
 #endif /* CMD_HISTORY */
@@ -1312,14 +1432,20 @@ save_cmdhist()
 	free(filename);
 	if (f == NULL)
 		return;
+#if HAVE_FCHMOD
+	/* Make history file readable only by owner. */
+	fchmod(fileno(f), 0600);
+#endif
 
 	fprintf(f, "%s\n", HISTFILE_FIRST_LINE);
 
 	fprintf(f, "%s\n", HISTFILE_SEARCH_SECTION);
 	save_mlist(&mlist_search, f);
 
+#if SHELL_ESCAPE || PIPEC
 	fprintf(f, "%s\n", HISTFILE_SHELL_SECTION);
 	save_mlist(&mlist_shell, f);
+#endif
 
 	fclose(f);
 #endif /* CMD_HISTORY */

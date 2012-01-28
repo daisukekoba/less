@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2004  Mark Nudelman
+ * Copyright (C) 1984-2005  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -601,7 +601,10 @@ prompt()
 	bottompos = position(BOTTOM_PLUS_ONE);
 
 	/*
-	 * If the -E flag is set and we've hit EOF on the last file, quit.
+	 * If we've hit EOF on the last file, and the -E flag is set
+	 * (or -F is set and this is the first prompt), then quit.
+	 * {{ Relying on "first prompt" to detect a single-screen file
+	 * fails if +G is used, for example. }}
 	 */
 	if ((quit_at_eof == OPT_ONPLUS || quit_if_one_screen) &&
 	    hit_eof && !(ch_getflags() & CH_HELPFILE) && 
@@ -630,13 +633,13 @@ prompt()
 	 */
 	clear_cmd();
 	p = pr_string();
-	if (p == NULL)
+	if (p == NULL || *p == '\0')
 		putchr(':');
 	else
 	{
-		so_enter();
+		at_enter(AT_STANDOUT);
 		putstr(p);
-		so_exit();
+		at_exit();
 	}
 }
 

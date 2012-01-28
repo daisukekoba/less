@@ -273,6 +273,9 @@
 /* Define if you have the system function.  */
 #define HAVE_SYSTEM	1
 
+/* Define if you have the snprintf function.  */
+#define HAVE_SNPRINTF	0
+
 /* Define if you have the <ctype.h> header file.  */
 #define HAVE_CTYPE_H 1
 

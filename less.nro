@@ -1,4 +1,4 @@
-.TH LESS 1 "Version 384: 22 Feb 2004"
+.TH LESS 1 "Version 394: 03 Dec 2005"
 .SH NAME
 less \- opposite of more
 .SH SYNOPSIS
@@ -175,7 +175,7 @@ Same as single quote.
 Search forward in the file for the N-th line containing the pattern.
 N defaults to 1.
 The pattern is a regular expression, as recognized by
-.I ed.
+the regular expression library supplied by your system.
 The search starts at the second line displayed
 (but see the \-a and \-j options, which change this).
 .sp
@@ -581,7 +581,7 @@ it is also used as a
 file.
 .IP "\-K or \-\-quit-on-intr"
 Causes
-.i less
+.I less
 to exit immediately when an interrupt character (usually ^C) is typed.
 Normally, an interrupt character causes
 .I less
@@ -693,7 +693,7 @@ ANSI "color" escape sequences are sequences of the form:
 .sp
 	ESC [ ... m
 .sp
-where the "..." is zero or more characters other than "m".
+where the "..." is zero or more color specification characters 
 For the purpose of keeping track of screen appearance,
 ANSI color escape sequences are assumed to not move the cursor.
 You can make
@@ -701,6 +701,11 @@ You can make
 think that characters other than "m" can end ANSI color escape sequences
 by setting the environment variable LESSANSIENDCHARS to the list of
 characters which can end a color escape sequence.
+And you can make 
+.I less 
+think that characters other than the standard ones may appear between 
+the ESC and the m by setting the environment variable LESSANSIMIDCHARS
+to the list of characters which can appear.
 .IP "\-s or \-\-squeeze-blank-lines"
 Causes consecutive blank lines to be squeezed into a single blank line.
 This is useful when viewing
@@ -1181,7 +1186,8 @@ to each of the possible values for LESSCHARSET:
 	next\ \ 	8bcccbcc18b95.bb125.bb
 .PP
 If neither LESSCHARSET nor LESSCHARDEF is set,
-but the string "UTF-8" is found in the LC_ALL, LC_TYPE or LANG
+but any of the strings "UTF-8", "UTF8", "utf-8" or "utf8" 
+is found in the LC_ALL, LC_TYPE or LANG
 environment variables, then the default character set is utf-8.
 .PP
 If that string is not found, but your system supports the
@@ -1213,6 +1219,24 @@ printf-style escape sequence (a % followed by x, X, o, d, etc.).
 For example, if LESSBINFMT is "*u[%x]", binary characters
 are displayed in underlined hexadecimal surrounded by brackets.
 The default if no LESSBINFMT is specified is "*s<%X>".
+The default if no LESSBINFMT is specified is "*s<%02X>".
+Warning: the result of expanding the character via LESSBINFMT must
+be less than 31 characters.
+.PP
+When the character set is utf-8, the LESSUTFBINFMT environment variable
+acts similarly to LESSBINFMT but it applies to Unicode code points
+that were successfully decoded but are unsuitable for display (e.g.,
+unassigned code points).
+Its default value is "<U+%04lX>".
+Note that LESSUTFBINFMT and LESSBINFMT share their display attribute 
+setting ("*x") so specifying one will affect both; 
+LESSUTFBINFMT is read after LESSBINFMT so its setting, if any,
+will have priority. 
+Problematic octets in a UTF-8 file (octets of a truncated sequence,
+octets of a complete but non-shortest form sequence, illegal octets, 
+and stray trailing octets)
+are displayed individually using LESSBINFMT so as to facilitate diagnostic
+of how the UTF-8 file is ill-formed.
 
 .SH "PROMPTS"
 The \-P option allows you to tailor the prompt to your preference.
@@ -1455,8 +1479,12 @@ Options which are passed to
 .I less
 automatically.
 .IP LESSANSIENDCHARS
-Characters which are assumed to end an ANSI color escape sequence
+Characters which may end an ANSI color escape sequence
 (default "m").
+.IP LESSANSIMIDCHARS
+Characters which may appear between the ESC character and the
+end character in an ANSI color escape sequence
+(default "0123456789;[?!"'#%()*+\ ".
 .IP LESSBINFMT
 Format for displaying non-printable, non-control characters.
 .IP LESSCHARDEF
@@ -1506,6 +1534,8 @@ Runs less in "secure" mode.
 See discussion under SECURITY.
 .IP LESSSEPARATOR
 String to be appended to a directory name in filename completion.
+.IP LESSUTFBINFMT
+Format for displaying non-printable Unicode code points.
 .IP LINES
 Sets the number of lines on the screen.
 Takes precedence over the number of lines specified by the TERM variable.
@@ -1562,11 +1592,12 @@ to treat some binary files as ordinary, non-binary files.
 To workaround this problem, set the environment variable
 LESSCHARSET to "ascii" (or whatever character set is appropriate).
 .PP
-See http://www.greenwoodsoftware.com/less for the latest list of known bugs in this
-version of less.
+This manual is too long.
+.PP
+See http://www.greenwoodsoftware.com/less for the list of known bugs in all versions of less.
 
 .SH COPYRIGHT
-Copyright (C) 2004  Mark Nudelman
+Copyright (C) 1984-2005  Mark Nudelman
 .PP
 less is part of the GNU project and is free software.
 You can redistribute it and/or modify it

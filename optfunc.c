@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2004  Mark Nudelman
+ * Copyright (C) 1984-2005  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -376,7 +376,7 @@ opt__V(type, s)
 		any_display = 1;
 		putstr("less ");
 		putstr(version);
-		putstr("\nCopyright (C) 2004 Mark Nudelman\n\n");
+		putstr("\nCopyright (C) 1984-2005 Mark Nudelman\n\n");
 		putstr("less comes with NO WARRANTY, to the extent permitted by law.\n");
 		putstr("For information about the terms of redistribution,\n");
 		putstr("see the file named README in the less distribution.\n");
@@ -459,8 +459,8 @@ opt_D(type, s)
 		}
 		if (type == TOGGLE)
 		{
-			so_enter();
-			so_exit();
+			at_enter(AT_STANDOUT);
+			at_exit();
 		}
 		break;
 	case QUERY:

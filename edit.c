@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2004  Mark Nudelman
+ * Copyright (C) 1984-2005  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -322,6 +322,14 @@ edit_ifile(ifile)
 		/*
 		 * Re-open the current file.
 		 */
+		if (was_curr_ifile == ifile)
+		{
+			/*
+			 * Whoops.  The "current" ifile is the one we just deleted.
+			 * Just give up.
+			 */
+			quit(QUIT_ERROR);
+		}
 		reedit_ifile(was_curr_ifile);
 		return (1);
 	} else if ((f = open(qopen_filename, OPEN_READ)) < 0)

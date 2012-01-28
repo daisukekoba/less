@@ -530,7 +530,7 @@ pr_expand(proto, maxwidth)
 	}
 
 	if (mp == message)
-		return (NULL);
+		return ("");
 	if (maxwidth > 0 && mp >= message + maxwidth)
 	{
 		/*
