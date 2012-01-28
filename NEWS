@@ -12,7 +12,7 @@
 
 ======================================================================
 
-	Major changes between "less" versions 436 and 442
+	Major changes between "less" versions 436 and 443
 
 * Change search behavior such that when a search is given an explicit 
   pattern, the entire displayed screen is included in the search and 
@@ -23,6 +23,8 @@
 
 * Add %F formatting to prompt strings, replaced by the last component
   of the input file.
+
+* Control-G while editing a command exits the command.
 
 * Less now exits with status 2 if control-C is pressed and -K is in effect.
 
