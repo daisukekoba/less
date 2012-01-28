@@ -1,4 +1,4 @@
-.TH LESS 1 "Version 424: 23 Jun 2008"
+.TH LESS 1 "Version 429: 11 Apr 2009"
 .SH NAME
 less \- opposite of more
 .SH SYNOPSIS
@@ -515,7 +515,9 @@ being set: n=normal, s=standout, d=bold, u=underlined, k=blink.
 \fIcolor\fP is a pair of numbers separated by a period.  
 The first number selects the foreground color and the second selects 
 the background color of the text.
-A single number \fIN\fP is the same as \fIN.0\fP.
+A single number \fIN\fP is the same as \fIN.M\fP,
+where \fIM\fP is the normal background color.
+
 .IP "\-e or \-\-quit-at-eof"
 Causes 
 .I less 
@@ -1144,6 +1146,14 @@ but it is usually not necessary since there is no replacement file
 to clean up.
 In this case, the replacement file name passed to the LESSCLOSE
 postprocessor is "\-".
+.PP
+For compatibility with previous versions of
+.I less,
+the input pipe is not used if
+.I less
+is viewing standard input.  
+However, if the character after the vertical bar is a dash (\-),
+the input pipe is used on standard input as well as other files.
 
 .SH "NATIONAL CHARACTER SETS"
 There are three types of characters in the input file:
