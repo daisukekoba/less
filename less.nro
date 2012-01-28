@@ -1,4 +1,4 @@
-.TH LESS 1 "Version 421: 24 Feb 2008"
+.TH LESS 1 "Version 423: 09 Jun 2008"
 .SH NAME
 less \- opposite of more
 .SH SYNOPSIS
@@ -259,7 +259,8 @@ in that case search commands do not turn highlighting back on.)
 .IP "&pattern"
 Display only lines which match the pattern;
 lines which do not match the pattern are not displayed.
-If pattern is empty, any filtering is turned off, and all lines are displayed.
+If pattern is empty (if you type & immediately followed by ENTER),
+any filtering is turned off, and all lines are displayed.
 While filtering is in effect, an ampersand is displayed at the
 beginning of the prompt,
 as a reminder that some lines in the file may be hidden.
@@ -1638,7 +1639,7 @@ The name of the editor (used for the v command).
 lesskey(1)
 
 .SH COPYRIGHT
-Copyright (C) 1984-2007  Mark Nudelman
+Copyright (C) 1984-2008  Mark Nudelman
 .PP
 less is part of the GNU project and is free software.
 You can redistribute it and/or modify it

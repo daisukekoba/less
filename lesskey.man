@@ -333,7 +333,7 @@ LESSKEY(1)                                                          LESSKEY(1)
 
 
 [1mCOPYRIGHT[0m
-       Copyright (C) 2000-2007  Mark Nudelman
+       Copyright (C) 2000-2008  Mark Nudelman
 
        lesskey is part of the GNU project and is free software; you can redis-
        tribute  it  and/or modify it under the terms of the GNU General Public
@@ -358,4 +358,4 @@ LESSKEY(1)                                                          LESSKEY(1)
 
 
 
-                           Version 421: 24 Feb 2008                 LESSKEY(1)
+                           Version 423: 09 Jun 2008                 LESSKEY(1)

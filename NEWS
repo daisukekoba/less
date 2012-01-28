@@ -13,7 +13,7 @@
 ======================================================================
 
 
-	Major changes between "less" versions 418 and 421
+	Major changes between "less" versions 418 and 423
 
 * New "&" command allows filtering of lines based on a pattern.
 
@@ -23,6 +23,9 @@
 * Improve behavior of -F option.
 
 * Allow CSI character (0x9B) to work in UTF-8 mode.
+
+* Output carriage return at startup in case terminal doesn't default
+  to column 1.
 
 * Fix bug in '' (quote, quote) command after G command.
 
