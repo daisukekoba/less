@@ -1549,7 +1549,7 @@ LESS(1)                                                                LESS(1)
 
 
 [1mCOPYRIGHT[0m
-       Copyright (C) 1984-2009  Mark Nudelman
+       Copyright (C) 1984-2011  Mark Nudelman
 
        less is part of the GNU project and is free software.  You  can  redis-
        tribute  it and/or modify it under the terms of either (1) the GNU Gen-
@@ -1578,4 +1578,4 @@ LESS(1)                                                                LESS(1)
 
 
 
-                           Version 439: 01 Jan 2011                    LESS(1)
+                           Version 440: 05 Jan 2011                    LESS(1)
