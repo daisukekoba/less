@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -120,9 +120,9 @@ cvt_text(odst, osrc, ops)
 
 	for (src = osrc, dst = odst;  *src != '\0';  src++)
 	{
-		if ((ops & CVT_TO_LC) && isupper((unsigned char) *src))
+		if ((ops & CVT_TO_LC) && IS_UPPER(*src))
 			/* Convert uppercase to lowercase. */
-			*dst++ = tolower((unsigned char) *src);
+			*dst++ = TO_LOWER(*src);
 		else if ((ops & CVT_BS) && *src == '\b' && dst > odst)
 			/* Delete BS and preceding char. */
 			dst--;
@@ -175,7 +175,7 @@ is_ucase(s)
 	register char *p;
 
 	for (p = s;  *p != '\0';  p++)
-		if (isupper((unsigned char) *p))
+		if (IS_UPPER(*p))
 			return (1);
 	return (0);
 }

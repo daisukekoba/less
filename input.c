@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -49,6 +49,7 @@ forw_line(curr_pos)
 	register int c;
 	int blankline;
 	int endline;
+	int backchars;
 
 	if (curr_pos == NULL_POSITION)
 	{
@@ -105,7 +106,8 @@ forw_line(curr_pos)
 		/*
 		 * Append the char to the line and get the next char.
 		 */
-		if (pappend(c, ch_tell()-1))
+		backchars = pappend(c, ch_tell()-1);
+		if (backchars > 0)
 		{
 			/*
 			 * The char won't fit in the line; the line
@@ -123,7 +125,7 @@ forw_line(curr_pos)
 				quit_if_one_screen = FALSE;
 			} else
 			{
-				new_pos = ch_tell() - 1;
+				new_pos = ch_tell() - backchars;
 				endline = FALSE;
 			}
 			break;
@@ -167,6 +169,7 @@ back_line(curr_pos)
 	POSITION new_pos, begin_new_pos;
 	int c;
 	int endline;
+	int backchars;
 
 	if (curr_pos == NULL_POSITION || curr_pos <= ch_zero())
 	{
@@ -283,7 +286,8 @@ back_line(curr_pos)
 			endline = TRUE;
 			break;
 		}
-		if (pappend(c, ch_tell()-1))
+		backchars = pappend(c, ch_tell()-1);
+		if (backchars > 0)
 		{
 			/*
 			 * Got a full printable line, but we haven't
@@ -297,8 +301,11 @@ back_line(curr_pos)
 				break;
 			}
 			pdone(0);
-			(void) ch_back_get();
-			new_pos--;
+			while (backchars-- > 0)
+			{
+				(void) ch_back_get();
+				new_pos--;
+			}
 			goto loop;
 		}
 	} while (new_pos < curr_pos);

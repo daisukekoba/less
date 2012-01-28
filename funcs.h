@@ -54,6 +54,11 @@
 	public int binary_char ();
 	public int control_char ();
 	public char * prchar ();
+	public int utf_len ();
+	public WCHAR get_wchar ();
+	public WCHAR step_char ();
+	public int is_composing_char ();
+	public int is_combining_char ();
 	public void cmd_reset ();
 	public void clear_cmd ();
 	public void cmd_putstr ();
@@ -64,6 +69,8 @@
 	public int cmd_char ();
 	public LINENUM cmd_int ();
 	public char * get_cmdbuf ();
+	public void init_cmdhist ();
+	public void save_cmdhist ();
 	public int in_mca ();
 	public void dispversion ();
 	public int getcc ();
@@ -142,6 +149,7 @@
 	public void jump_line_loc ();
 	public void jump_loc ();
 	public void init_line ();
+	public int is_ascii_char ();
 	public void prewind ();
 	public void plinenum ();
 	public int is_ansi_end ();

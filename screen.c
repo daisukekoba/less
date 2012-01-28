@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -189,7 +189,9 @@ static int init_done = 0;
 
 public int auto_wrap;		/* Terminal does \r\n when write past margin */
 public int ignaw;		/* Terminal ignores \n immediately after wrap */
-public int erase_char, kill_char; /* The user's erase and line-kill chars */
+public int erase_char;		/* The user's erase char */
+public int erase2_char;		/* The user's other erase char */
+public int kill_char;		/* The user's line-kill char */
 public int werase_char;		/* The user's word-erase char */
 public int sc_width, sc_height;	/* Height & width of screen */
 public int bo_s_width, bo_e_width;	/* Printing width of boldface seq */
@@ -257,6 +259,7 @@ raw_mode(on)
 
 	if (on == curr_on)
 		return;
+	erase2_char = '\b'; /* in case OS doesn't know about erase2 */
 #if HAVE_TERMIOS_H && HAVE_TERMIOS_FUNCS
     {
 	struct termios s;
@@ -339,6 +342,9 @@ raw_mode(on)
 		}
 #endif
 		erase_char = s.c_cc[VERASE];
+#ifdef VERASE2
+		erase2_char = s.c_cc[VERASE2];
+#endif
 		kill_char = s.c_cc[VKILL];
 #ifdef VWERASE
 		werase_char = s.c_cc[VWERASE];

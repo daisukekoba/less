@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -79,13 +79,21 @@
 #if HAVE_STRING_H
 #include <string.h>
 #endif
+
+/* OS-specific includes */
 #ifdef _OSK
 #include <modes.h>
 #include <strings.h>
 #endif
+
+#ifdef __TANDEM
+#include <floss.h>
+#endif
+
 #if MSDOS_COMPILER==WIN32C || OS2
 #include <io.h>
 #endif
+
 #if MSDOS_COMPILER==DJGPPC
 #include <io.h>
 #include <sys/exceptn.h>
@@ -104,16 +112,40 @@ void free();
  * Simple lowercase test which can be used during option processing
  * (before options are parsed which might tell us what charset to use).
  */
-#define SIMPLE_IS_UPPER(c)	((c) >= 'A' && (c) <= 'Z')
-#define SIMPLE_IS_LOWER(c)	((c) >= 'a' && (c) <= 'z')
-#define	SIMPLE_TO_UPPER(c)	((c) - 'a' + 'A')
-#define	SIMPLE_TO_LOWER(c)	((c) - 'A' + 'a')
+#define ASCII_IS_UPPER(c)	((c) >= 'A' && (c) <= 'Z')
+#define ASCII_IS_LOWER(c)	((c) >= 'a' && (c) <= 'z')
+#define	ASCII_TO_UPPER(c)	((c) - 'a' + 'A')
+#define	ASCII_TO_LOWER(c)	((c) - 'A' + 'a')
+
+#undef IS_UPPER
+#undef IS_LOWER
+#undef TO_UPPER
+#undef TO_LOWER
+#undef IS_SPACE
+#undef IS_DIGIT
 
 #if !HAVE_UPPER_LOWER
-#define	isupper(c)	SIMPLE_IS_UPPER(c)
-#define	islower(c)	SIMPLE_IS_LOWER(c)
-#define	toupper(c)	SIMPLE_TO_UPPER(c)
-#define	tolower(c)	SIMPLE_TO_LOWER(c)
+#define	IS_UPPER(c)	ASCII_IS_UPPER(c)
+#define	IS_LOWER(c)	ASCII_IS_LOWER(c)
+#define	TO_UPPER(c)	ASCII_TO_UPPER(c)
+#define	TO_LOWER(c)	ASCII_TO_LOWER(c)
+#else
+#define	IS_UPPER(c)	isupper((unsigned char) (c))
+#define	IS_LOWER(c)	islower((unsigned char) (c))
+#define	TO_UPPER(c)	toupper((unsigned char) (c))
+#define	TO_LOWER(c)	tolower((unsigned char) (c))
+#endif
+
+#ifdef isspace
+#define IS_SPACE(c)	isspace((unsigned char)(c))
+#else
+#define IS_SPACE(c)	((c) == ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r' || (c) == '\f')
+#endif
+
+#ifdef isdigit
+#define IS_DIGIT(c)	isdigit((unsigned char)(c))
+#else
+#define IS_DIGIT(c)	((c) >= '0' && (c) <= '9')
 #endif
 
 #ifndef NULL
@@ -153,9 +185,11 @@ void free();
 /*
  * Special types and constants.
  */
+typedef unsigned long WCHAR;
 typedef off_t		POSITION;
 typedef off_t		LINENUM;
 #define MIN_LINENUM_WIDTH  7	/* Min printing width of a line number */
+#define MAX_UTF_CHAR_LEN   6	/* Max bytes in one UTF-8 char */
 
 #define	NULL_POSITION	((POSITION)(-1))
 

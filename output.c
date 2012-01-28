@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -360,6 +360,25 @@ flush()
 putchr(c)
 	int c;
 {
+#if 0 /* fake UTF-8 output for testing */
+	extern int utf_mode;
+	if (utf_mode)
+	{
+		static char ubuf[MAX_UTF_CHAR_LEN];
+		static int ubuf_len = 0;
+		static int ubuf_index = 0;
+		if (ubuf_len == 0)
+		{
+			ubuf_len = utf_len(c);
+			ubuf_index = 0;
+		}
+		ubuf[ubuf_index++] = c;
+		if (ubuf_index < ubuf_len)
+			return c;
+		c = get_wchar(ubuf) & 0xFF;
+		ubuf_len = 0;
+	}
+#endif
 	if (need_clr)
 	{
 		need_clr = 0;

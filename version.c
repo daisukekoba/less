@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -646,6 +646,13 @@ v380 11/24/02	Make LINENUM same as POSITION.
 v381 11/28/02	Make -N use 7 columns for line number if possible.
 -----------------------------------------------------------------
 v382   2/3/04	Remove copyrighted code.
+-----------------------------------------------------------------
+v383  2/16/04	Add history file; add -K option; improve UTF-8 handling;
+		fix some signed char bugs (thanks to Christian Biere);
+		fix some upper/lower case bugs (thanks to Bjoern Jacke);
+		add erase2 char (thanks to David Lawrence);
+		add windows charset (thanks to Dimitar Zhekov).
+v384  2/20/04	Improvements in UTF-8 handling.
 */
 
-char version[] = "382";
+char version[] = "384";

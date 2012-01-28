@@ -7,11 +7,39 @@
       http://www.greenwoodsoftware.com/less
   You can also download the latest version of less from there.
 
-  To report bugs, suggestions or comments, send email to 
-  bug-less@gnu.org or markn@greenwoodsoftware.com.
+  To report bugs, suggestions or comments, send email to bug-less@gnu.org.
 
 ======================================================================
 
+
+	Major changes between "less" versions 382 and 384
+
+* Add history file to save search and shell command history between
+  invocations of less.
+
+* Add -K (or --quit-on-intr) option to make less exit immediately on ctrl-C.
+
+* Improve handling of UTF-8 files and commands.
+
+* Add "windows" charset.
+
+* Add man page for lessecho.
+
+* Add support for erase2 character, treated same as erase.
+
+* Use ASCII lowercase/uppercase logic when operating on the command line.
+
+* Update makefile for Borland C++ 5.5.1.
+
+* Fix bug in calculating number of pages for %D prompt.
+
+* Fix bug in handling tag file error.
+
+* Fix possible buffer overflow in "global" tag search.
+
+* Fix buffer overflow in reverse search.
+
+======================================================================
 
 	Major changes between "less" versions 381 and 382
 

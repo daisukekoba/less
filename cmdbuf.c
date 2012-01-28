@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2002  Mark Nudelman
+ * Copyright (C) 1984-2004  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -18,6 +18,7 @@
 #include "cmd.h"
 
 extern int sc_width;
+extern int utf_mode;
 
 static char cmdbuf[CMDBUF_SIZE]; /* Buffer for holding a multi-char command */
 static int cmd_col;		/* Current column of the cursor */
@@ -48,6 +49,12 @@ public char closequote = '"';
 #endif
 
 #if CMD_HISTORY
+
+/* History file */
+#define HISTFILE_FIRST_LINE      ".less-history-file:"
+#define HISTFILE_SEARCH_SECTION  ".search"
+#define HISTFILE_SHELL_SECTION   ".shell"
+
 /*
  * A mlist structure represents a command history.
  */
@@ -93,6 +100,10 @@ public void * constant ml_shell = (void *)3;
 static struct mlist *curr_mlist = NULL;
 static int curr_cmdflags;
 
+static char cmd_mbc_buf[MAX_UTF_CHAR_LEN];
+static int cmd_mbc_buf_len;
+static int cmd_mbc_buf_index;
+
 
 /*
  * Reset command buffer (to empty).
@@ -105,6 +116,7 @@ cmd_reset()
 	cmd_col = 0;
 	cmd_offset = 0;
 	literal = 0;
+	cmd_mbc_buf_len = 0;
 }
 
 /*
@@ -115,6 +127,7 @@ clear_cmd()
 {
 	clear_bot();
 	cmd_col = prompt_col = 0;
+	cmd_mbc_buf_len = 0;
 }
 
 /*
@@ -124,9 +137,16 @@ clear_cmd()
 cmd_putstr(s)
 	char *s;
 {
-	putstr(s);
-	cmd_col += strlen(s);
-	prompt_col += strlen(s);
+	char *endline = s + strlen(s);
+	while (*s != '\0')
+	{
+		char *ns = s;
+		(void) step_char(&ns, +1, endline);
+		while (s < ns)
+			putchr(*s++);
+		cmd_col++;
+		prompt_col++;
+	}
 }
 
 /*
@@ -135,7 +155,85 @@ cmd_putstr(s)
 	public int
 len_cmdbuf()
 {
-	return (strlen(cmdbuf));
+	char *s = cmdbuf;
+	char *endline = s + strlen(s);
+	int len = 0;
+
+	while (*s != '\0')
+	{
+		step_char(&s, +1, endline);
+		len++;
+	}
+	return (len);
+}
+
+/*
+ * Step a pointer one character right in the command buffer.
+ */
+	static char *
+cmd_step_right(pp, pwidth)
+	char **pp;
+	int *pwidth;
+{
+	char *p;
+	int len;
+	WCHAR ch;
+
+	p = *pp;
+	ch = step_char(pp, +1, p + strlen(p));
+	len = *pp - p;
+	if (len == 1)
+	{
+		char *pr = prchar(*p);
+		if (pwidth != NULL)
+			*pwidth = strlen(pr);
+		return (pr);
+	} else
+	{
+		/* Assume all multibyte characters are printable. */
+		static char pbuf[MAX_UTF_CHAR_LEN+1];
+		strncpy(pbuf, p, len);
+		pbuf[len] = '\0';
+		if (pwidth != NULL)
+		{
+			/* {{ Should handle combining chars too? }} */
+			*pwidth = is_composing_char(ch) ? 0 : 1;
+		}
+		return (pbuf);
+	}
+}
+
+/*
+ * Step a pointer one character left in the command buffer.
+ */
+	static char *
+cmd_step_left(pp, pwidth)
+	char **pp;
+	int *pwidth;
+{
+	char *p;
+	int len;
+	WCHAR ch;
+
+	p = *pp;
+	ch = step_char(pp, -1, cmdbuf);
+	len = p - *pp;
+	if (len == 1)
+	{
+		char *pr = prchar(**pp);
+		*pwidth = strlen(pr);
+		return (pr);
+	} else
+	{
+		/* Assume all multibyte characters are printable. */
+		static char pbuf[MAX_UTF_CHAR_LEN+1];
+		strncpy(pbuf, *pp, len);
+		pbuf[len] = '\0';
+		if (pwidth != NULL)
+			/* {{ Should handle combining chars too? }} */
+			*pwidth = is_composing_char(ch) ? 0 : 1;
+		return (pbuf);
+	}
 }
 
 /*
@@ -146,19 +244,20 @@ len_cmdbuf()
 cmd_repaint(old_cp)
 	char *old_cp;
 {
-	char *p;
-
 	/*
 	 * Repaint the line from the current position.
 	 */
 	clear_eol();
-	for ( ;  *cp != '\0';  cp++)
+	while (*cp != '\0')
 	{
-		p = prchar(*cp);
-		if (cmd_col + (int)strlen(p) >= sc_width)
+		char *np = cp;
+		int width;
+		char *pr = cmd_step_right(&np, &width);
+		if (cmd_col + width >= sc_width)
 			break;
-		putstr(p);
-		cmd_col += strlen(p);
+		cp = np;
+		putstr(pr);
+		cmd_col += width;
 	}
 
 	/*
@@ -201,7 +300,11 @@ cmd_lshift()
 	s = cmdbuf + cmd_offset;
 	cols = 0;
 	while (cols < (sc_width - prompt_col) / 2 && *s != '\0')
-		cols += strlen(prchar(*s++));
+	{
+		int width;
+		cmd_step_right(&s, &width);
+		cols += width;
+	}
 
 	cmd_offset = s - cmdbuf;
 	save_cp = cp;
@@ -216,7 +319,6 @@ cmd_lshift()
 cmd_rshift()
 {
 	char *s;
-	char *p;
 	char *save_cp;
 	int cols;
 
@@ -229,8 +331,9 @@ cmd_rshift()
 	cols = 0;
 	while (cols < (sc_width - prompt_col) / 2 && s > cmdbuf)
 	{
-		p = prchar(*--s);
-		cols += strlen(p);
+		int width;
+		cmd_step_left(&s, &width);
+		cols += width;
 	}
 
 	cmd_offset = s - cmdbuf;
@@ -245,23 +348,24 @@ cmd_rshift()
 	static int
 cmd_right()
 {
-	char *p;
+	char *pr;
+	char *ncp;
+	int width;
 	
 	if (*cp == '\0')
 	{
-		/* 
-		 * Already at the end of the line.
-		 */
+		/* Already at the end of the line. */
 		return (CC_OK);
 	}
-	p = prchar(*cp);
-	if (cmd_col + (int)strlen(p) >= sc_width)
+	ncp = cp;
+	pr = cmd_step_right(&ncp, &width);
+	if (cmd_col + width >= sc_width)
 		cmd_lshift();
-	else if (cmd_col + (int)strlen(p) == sc_width - 1 && cp[1] != '\0')
+	else if (cmd_col + width == sc_width - 1 && cp[1] != '\0')
 		cmd_lshift();
-	cp++;
-	putstr(p);
-	cmd_col += strlen(p);
+	cp = ncp;
+	cmd_col += width;
+	putstr(pr);
 	return (CC_OK);
 }
 
@@ -271,19 +375,21 @@ cmd_right()
 	static int
 cmd_left()
 {
-	char *p;
+	char *ncp;
+	int width;
 	
 	if (cp <= cmdbuf)
 	{
 		/* Already at the beginning of the line */
 		return (CC_OK);
 	}
-	p = prchar(cp[-1]);
-	if (cmd_col < prompt_col + (int)strlen(p))
+	ncp = cp;
+	cmd_step_left(&ncp, &width);
+	if (cmd_col < prompt_col + width)
 		cmd_rshift();
-	cp--;
-	cmd_col -= strlen(p);
-	while (*p++ != '\0')
+	cp = ncp;
+	cmd_col -= width;
+	while (width-- > 0)
 		putbs();
 	return (CC_OK);
 }
@@ -292,26 +398,29 @@ cmd_left()
  * Insert a char into the command buffer, at the current position.
  */
 	static int
-cmd_ichar(c)
-	int c;
+cmd_ichar(cs, clen)
+	char *cs;
+	int clen;
 {
 	char *s;
 	
-	if (strlen(cmdbuf) >= sizeof(cmdbuf)-2)
+	if (strlen(cmdbuf) + clen >= sizeof(cmdbuf)-1)
 	{
-		/*
-		 * No room in the command buffer for another char.
-		 */
+		/* No room in the command buffer for another char. */
 		bell();
 		return (CC_ERROR);
 	}
 		
 	/*
-	 * Insert the character into the buffer.
+	 * Make room for the new character (shift the tail of the buffer right).
 	 */
 	for (s = &cmdbuf[strlen(cmdbuf)];  s >= cp;  s--)
-		s[1] = s[0];
-	*cp = c;
+		s[clen] = s[0];
+	/*
+	 * Insert the character into the buffer.
+	 */
+	for (s = cp;  s < cp + clen;  s++)
+		*s = *cs++;
 	/*
 	 * Reprint the tail of the line from the inserted char.
 	 */
@@ -328,6 +437,7 @@ cmd_ichar(c)
 cmd_erase()
 {
 	register char *s;
+	int clen;
 
 	if (cp == cmdbuf)
 	{
@@ -340,12 +450,20 @@ cmd_erase()
 	/*
 	 * Move cursor left (to the char being erased).
 	 */
+	s = cp;
 	cmd_left();
+	clen = s - cp;
+
 	/*
 	 * Remove the char from the buffer (shift the buffer left).
 	 */
-	for (s = cp;  *s != '\0';  s++)
-		s[0] = s[1];
+	for (s = cp;  ;  s++)
+	{
+		s[0] = s[clen];
+		if (s[0] == '\0')
+			break;
+	}
+
 	/*
 	 * Repaint the buffer after the erased char.
 	 */
@@ -368,9 +486,7 @@ cmd_delete()
 {
 	if (*cp == '\0')
 	{
-		/*
-		 * At end of string; there is no char under the cursor.
-		 */
+		/* At end of string; there is no char under the cursor. */
 		return (CC_OK);
 	}
 	/*
@@ -441,9 +557,7 @@ cmd_kill()
 {
 	if (cmdbuf[0] == '\0')
 	{
-		/*
-		 * Buffer is already empty; abort the current command.
-		 */
+		/* Buffer is already empty; abort the current command. */
 		return (CC_QUIT);
 	}
 	cmd_offset = 0;
@@ -505,12 +619,9 @@ cmd_updown(action)
 	s = curr_mlist->curr_mp->string;
 	if (s == NULL)
 		s = "";
-	for (cp = cmdbuf;  *s != '\0';  s++)
-	{
-		*cp = *s;
+	strcpy(cmdbuf, s);
+	for (cp = cmdbuf;  *cp != '\0';  )
 		cmd_right();
-	}
-	*cp = '\0';
 	return (CC_OK);
 }
 #endif
@@ -705,10 +816,13 @@ cmd_istr(str)
 {
 	char *s;
 	int action;
+	char *endline = str + strlen(str);
 	
-	for (s = str;  *s != '\0';  s++)
+	for (s = str;  *s != '\0';  )
 	{
-		action = cmd_ichar(*s);
+		char *os = s;
+		step_char(&s, +1, endline);
+		action = cmd_ichar(os, s - os);
 		if (action != CC_OK)
 		{
 			bell();
@@ -995,6 +1109,30 @@ cmd_char(c)
 	int c;
 {
 	int action;
+	int len;
+
+	if (!utf_mode)
+	{
+		cmd_mbc_buf[0] = c;
+		len = 1;
+	} else
+	{
+		/*
+		 * If it's a multibyte char, just accumulate bytes until
+		 * we have the entire character.
+		 */
+		if (cmd_mbc_buf_len == 0)
+		{
+			cmd_mbc_buf_len = utf_len(c);
+			cmd_mbc_buf_index = 0;
+		}
+		cmd_mbc_buf[cmd_mbc_buf_index++] = c;
+		if (cmd_mbc_buf_index < cmd_mbc_buf_len)
+			/* We don't have the entire char yet. */
+			return (CC_OK);
+		len = cmd_mbc_buf_len;
+		cmd_mbc_buf_len = 0;
+	}
 
 	if (literal)
 	{
@@ -1002,13 +1140,13 @@ cmd_char(c)
 		 * Insert the char, even if it is a line-editing char.
 		 */
 		literal = 0;
-		return (cmd_ichar(c));
+		return (cmd_ichar(cmd_mbc_buf, len));
 	}
 		
 	/*
-	 * See if it is a special line-editing character.
+	 * See if it is a line-editing character.
 	 */
-	if (in_mca())
+	if (in_mca() && len == 1)
 	{
 		action = cmd_edit(c);
 		switch (action)
@@ -1024,7 +1162,7 @@ cmd_char(c)
 	/*
 	 * Insert the char into the command buffer.
 	 */
-	return (cmd_ichar(c));
+	return (cmd_ichar(cmd_mbc_buf, len));
 }
 
 /*
@@ -1048,4 +1186,141 @@ cmd_int()
 get_cmdbuf()
 {
 	return (cmdbuf);
+}
+
+#if CMD_HISTORY
+/*
+ *
+ */
+	static char *
+histfile_name()
+{
+	char *home;
+	char *name;
+	
+	name = lgetenv("LESSHISTFILE");
+	if (name != NULL && *name != '\0')
+	{
+		if (strcmp(name, "-") == 0)
+			return NULL;
+		return (save(name));
+	}
+	home = lgetenv("HOME");
+	name = (char *) ecalloc(strlen(home) + strlen(LESSHISTFILE) + 2, sizeof(char));
+	sprintf(name, "%s/%s", home, LESSHISTFILE);
+	return (name);
+}
+#endif /* CMD_HISTORY */
+
+/*
+ * Initialize history from a .lesshist file.
+ */
+	public void
+init_cmdhist()
+{
+#if CMD_HISTORY
+	struct mlist *ml = NULL;
+	char line[CMDBUF_SIZE];
+	char *filename;
+	FILE *f;
+	char *p;
+
+	filename = histfile_name();
+	if (filename == NULL)
+		return;
+	f = fopen(filename, "r");
+	free(filename);
+	if (f == NULL)
+		return;
+	if (fgets(line, sizeof(line), f) == NULL ||
+	    strncmp(line, HISTFILE_FIRST_LINE, strlen(HISTFILE_FIRST_LINE)) != 0)
+	{
+		fclose(f);
+		return;
+	}
+	while (fgets(line, sizeof(line), f) != NULL)
+	{
+		for (p = line;  *p != '\0';  p++)
+		{
+			if (*p == '\n' || *p == '\r')
+			{
+				*p = '\0';
+				break;
+			}
+		}
+		if (strcmp(line, HISTFILE_SEARCH_SECTION) == 0)
+			ml = &mlist_search;
+#if SHELL_ESCAPE || PIPEC
+		else if (strcmp(line, HISTFILE_SHELL_SECTION) == 0)
+			ml = &mlist_shell;
+#endif
+		else if (*line == '"')
+		{
+			if (ml != NULL)
+				cmd_addhist(ml, line+1);
+		}
+	}
+	fclose(f);
+#endif /* CMD_HISTORY */
+}
+
+/*
+ *
+ */
+#if CMD_HISTORY
+	static void
+save_mlist(ml, f)
+	struct mlist *ml;
+	FILE *f;
+{
+	int histsize = 0;
+	int n;
+	char *s;
+
+	s = lgetenv("LESSHISTSIZE");
+	if (s != NULL)
+		histsize = atoi(s);
+	if (histsize == 0)
+		histsize = 100;
+
+	ml = ml->prev;
+	for (n = 0;  n < histsize;  n++)
+	{
+		if (ml->string == NULL)
+			break;
+		ml = ml->prev;
+	}
+	for (ml = ml->next;  ml->string != NULL;  ml = ml->next)
+		fprintf(f, "\"%s\n", ml->string);
+}
+#endif /* CMD_HISTORY */
+
+/*
+ *
+ */
+	public void
+save_cmdhist()
+{
+#if CMD_HISTORY
+	char *filename;
+	FILE *f;
+
+	filename = histfile_name();
+	if (filename == NULL)
+		return;
+	f = fopen(filename, "w");
+	free(filename);
+	if (f == NULL)
+		return;
+
+	fprintf(f, "%s\n", HISTFILE_FIRST_LINE);
+
+	fprintf(f, "%s\n", HISTFILE_SEARCH_SECTION);
+	save_mlist(&mlist_search, f);
+
+	fprintf(f, "%s\n", HISTFILE_SHELL_SECTION);
+	save_mlist(&mlist_shell, f);
+
+	fclose(f);
+#endif /* CMD_HISTORY */
 }
