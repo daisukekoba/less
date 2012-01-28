@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2000  Mark Nudelman
+ * Copyright (C) 1984-2002  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -297,7 +297,6 @@ find_linenum(pos)
 	 * The decision is based on which way involves 
 	 * traversing fewer bytes in the file.
 	 */
-	flush();
 #if HAVE_TIME
 	startime = get_time();
 #endif
@@ -386,7 +385,6 @@ find_pos(lno)
 		/* Found it exactly. */
 		return (p->pos);
 
-	flush();
 	if (p == &anchor || lno - p->prev->line < p->line - lno)
 	{
 		/*

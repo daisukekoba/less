@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1984-2000  Mark Nudelman
+ * Copyright (C) 1984-2002  Mark Nudelman
  *
  * You may distribute under the terms of either the GNU General Public
  * License or the Less License, as specified in the README file.
@@ -14,6 +14,9 @@
  */
 
 #include "less.h"
+#if MSDOS_COMPILER==WIN32C
+#include <windows.h>
+#endif
 #include "position.h"
 #include "option.h"
 #include "cmd.h"
@@ -214,6 +217,10 @@ exec_mca()
 		if (secure)
 			break;
 		edit_list(cbuf);
+#if TAGS
+		/* If tag structure is loaded then clean it up. */
+		cleantags();
+#endif
 		break;
 #endif
 #if SHELL_ESCAPE
@@ -284,7 +291,7 @@ mca_char(c)
 		 * Terminated by a non-digit.
 		 */
 		if ((c < '0' || c > '9') && 
-		  editchar(c, EC_PEEK|EC_NOHISTORY|EC_NOCOMPLETE) == A_INVALID)
+		  editchar(c, EC_PEEK|EC_NOHISTORY|EC_NOCOMPLETE|EC_NORIGHTLEFT) == A_INVALID)
 		{
 			/*
 			 * Not part of the number.
@@ -356,7 +363,7 @@ mca_char(c)
 			 * If so, display the complete name and stop 
 			 * accepting chars until user hits RETURN.
 			 */
-			struct option *o;
+			struct loption *o;
 			char *oname;
 			int lc;
 
@@ -608,6 +615,13 @@ prompt()
 		quit(QUIT_OK);
 #endif
 
+#if MSDOS_COMPILER==WIN32C
+	/* 
+	 * In Win32, display the file name in the window title.
+	 */
+	if (!(ch_getflags() & CH_HELPFILE))
+		SetConsoleTitle(pr_expand("Less?f - %f.", 0));
+#endif
 	/*
 	 * Select the proper prompt and display it.
 	 */
@@ -832,6 +846,7 @@ commands()
 	PARG parg;
 	IFILE old_ifile;
 	IFILE new_ifile;
+	char *tagfile;
 
 	search_type = SRCH_FORW;
 	wscroll = (sc_height + 1) / 2;
@@ -1349,6 +1364,13 @@ commands()
 			/*
 			 * Examine next file.
 			 */
+#if TAGS
+			if (ntags())
+			{
+				error("No next file", NULL_PARG);
+				break;
+			}
+#endif
 			if (number <= 0)
 				number = 1;
 			if (edit_next(number))
@@ -1365,6 +1387,13 @@ commands()
 			/*
 			 * Examine previous file.
 			 */
+#if TAGS
+			if (ntags())
+			{
+				error("No previous file", NULL_PARG);
+				break;
+			}
+#endif
 			if (number <= 0)
 				number = 1;
 			if (edit_prev(number))
@@ -1372,6 +1401,48 @@ commands()
 				parg.p_string = (number > 1) ? "(N-th) " : "";
 				error("No %sprevious file", &parg);
 			}
+			break;
+
+		case A_NEXT_TAG:
+#if TAGS
+			if (number <= 0)
+				number = 1;
+			tagfile = nexttag(number);
+			if (tagfile == NULL)
+			{
+				error("No next tag", NULL_PARG);
+				break;
+			}
+			if (edit(tagfile) == 0)
+			{
+				POSITION pos = tagsearch();
+				if (pos != NULL_POSITION)
+					jump_loc(pos, jump_sline);
+			}
+#else
+			error("Command not available", NULL_PARG);
+#endif
+			break;
+
+		case A_PREV_TAG:
+#if TAGS
+			if (number <= 0)
+				number = 1;
+			tagfile = prevtag(number);
+			if (tagfile == NULL)
+			{
+				error("No previous tag", NULL_PARG);
+				break;
+			}
+			if (edit(tagfile) == 0)
+			{
+				POSITION pos = tagsearch();
+				if (pos != NULL_POSITION)
+					jump_loc(pos, jump_sline);
+			}
+#else
+			error("Command not available", NULL_PARG);
+#endif
 			break;
 
 		case A_INDEX_FILE:
@@ -1502,7 +1573,9 @@ commands()
 			goto again;
 
 		case A_LSHIFT:
-			if (number <= 0)
+			if (number > 0)
+				shift_count = number;
+			else
 				number = (shift_count > 0) ?
 					shift_count : sc_width / 2;
 			if (number > hshift)
@@ -1512,7 +1585,9 @@ commands()
 			break;
 
 		case A_RSHIFT:
-			if (number <= 0)
+			if (number > 0)
+				shift_count = number;
+			else
 				number = (shift_count > 0) ?
 					shift_count : sc_width / 2;
 			hshift += number;
